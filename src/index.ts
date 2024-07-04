@@ -25,7 +25,8 @@ async function run() {
 
         let message = `Commits added to \`${releaseBranch}\` since \`${previousTag}\`:\n`;
         for (const commit of commits) {
-            message += `\`${commit.sha.substring(0, 7)}\` - ${commit.commit.message} (by ${commit.commit.author.name})\n`;
+            const authorName = commit.commit.author?.name ?? "Unknown author";
+            message += `\`${commit.sha.substring(0, 7)}\` - ${commit.commit.message} (by ${authorName})\n`;
         }
 
         const payload = JSON.stringify({ text: message });
