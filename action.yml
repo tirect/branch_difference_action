@@ -1,10 +1,12 @@
-name: Stale Branches
-description: Sends a Slack message about stale branches
+name: Release commits
+description: Sends a Slack message about release commits
 inputs:
-  days-before-stale:
-    description: "The number of days before a branch is considered stale"
+  release-branch:
+    description: "The release branch to compare"
     required: true
-    default: "30"
+  previous-tag:
+    description: "The previous release tag to compare against"
+    required: true
   slack-webhook-url:
     description: "The Slack webhook URL to send the message to"
     required: true
