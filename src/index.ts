@@ -62,7 +62,7 @@ async function run() {
                 }
             }
             if (hasCommits) {
-                message += `\nTeam Lead: <@${lead}>`;
+                message += `\nTeam Lead: ${lead}`;
 
                 const payload = JSON.stringify({ text: message });
 
