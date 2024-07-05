@@ -7,7 +7,7 @@ async function run() {
         const releaseBranch = core.getInput("release-branch", { required: true });
         const previousTag = core.getInput("previous-tag", { required: true });
         const slackWebhookUrl = core.getInput("slack-webhook-url", { required: true });
-        const teamMappingInput = core.getInput("team-mapping", { required: true });
+        const teamMappingInput = process.env.TEAM_MAPPING || "";
 
         const teamMapping = JSON.parse(teamMappingInput);
 
