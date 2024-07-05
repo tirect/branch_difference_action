@@ -8,10 +8,10 @@ async function run() {
         const previousTag = core.getInput("previous-tag", { required: true });
         const slackWebhookUrl = core.getInput("slack-webhook-url", { required: true });
 
-        if (typeof process.env.GITHUB_TOKEN === 'undefined') {
+        if (typeof process.env.STALE_BRANCH_TOKEN === 'undefined') {
             throw new Error('GITHUB_TOKEN environment variable is not defined');
         }
-        const octokit = github.getOctokit(process.env.GITHUB_TOKEN);
+        const octokit = github.getOctokit(process.env.STALE_BRANCH_TOKEN);
         const { owner, repo } = github.context.repo;
 
         const compareResponse = await octokit.rest.repos.compareCommits({
