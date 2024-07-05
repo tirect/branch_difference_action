@@ -50,7 +50,7 @@ async function run() {
             for (const author of teamInfo.authors) {
                 if (commitsByAuthor[author]) {
                     hasCommits = true;
-                    message += `Commits by ${author}:\n`;
+                    message += `Commits by \`${author}\`:\n`;
                     for (const commit of commitsByAuthor[author]) {
                         message += `\`${commit.sha}\` - ${commit.message}\n`;
                     }
@@ -87,7 +87,7 @@ async function run() {
             }
             if (!isAssigned) {
                 hasUnassignedCommits = true;
-                unassignedMessage += `Commits by ${author}:\n`;
+                unassignedMessage += `Commits by \`${author}\`:\n`;
                 for (const commit of commitsByAuthor[author]) {
                     unassignedMessage += `\`${commit.sha}\` - ${commit.message}\n`;
                 }
