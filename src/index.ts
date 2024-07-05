@@ -23,15 +23,35 @@ async function run() {
 
         const commits = compareResponse.data.commits;
 
-        let message = `Commits added to \`${releaseBranch}\` since \`${previousTag}\`:\n`;
+        // Group commits by author
+        const commitsByAuthor: { [key: string]: any[] } = {};
         for (const commit of commits) {
             const authorName = commit.commit.author?.name ?? "Unknown author";
-            message += `\`${commit.sha.substring(0, 7)}\` - ${commit.commit.message} (by ${authorName})\n`;
+            const commitMessage = commit.commit.message.split("\n")[0]; // Take only the first line
+            if (!commitsByAuthor[authorName]) {
+                commitsByAuthor[authorName] = [];
+            }
+            commitsByAuthor[authorName].push({
+                sha: commit.sha.substring(0, 7),
+                message: commitMessage,
+            });
         }
 
-        const payload = JSON.stringify({ text: message });
+        // Send a message for each author
+        for (const author in commitsByAuthor) {
+            let message = `Commits added to \`${releaseBranch}\` since \`${previousTag}\` by ${author}:\n`;
+            for (const commit of commitsByAuthor[author]) {
+                message += `\`${commit.sha}\` - ${commit.message}\n`;
+            }
 
-        await axios.default.post(slackWebhookUrl, payload);
+            const payload = JSON.stringify({ text: message });
+
+            // Log the message to be sent to Slack
+            console.log("Message to be sent to Slack:", message);
+
+            // Send the message to Slack
+            await axios.default.post(slackWebhookUrl, payload);
+        }
     } catch (error: any) {
         core.setFailed(error.message);
     }
