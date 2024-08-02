@@ -40,8 +40,6 @@ async function run() {
             });
         }
 
-        const unassignedCommits: { [key: string]: any[] } = {};
-
         // Send a message for each team lead
         for (const lead in teamMapping) {
             const teamInfo = teamMapping[lead];
@@ -55,19 +53,14 @@ async function run() {
                         message += `\`${commit.sha}\` - ${commit.message}\n`;
                     }
 
-                    if (author != teamInfo.authors.last)
-                    {
-                        message += `**********************\n`;
-                    }
+                    message += `**********************\n`;
                 }
             }
             if (hasCommits) {
                 message += `\nTeam Lead: ${lead}`;
 
-                const payload = JSON.stringify({ text: message });
-
-                // Send the message to Slack
-                await axios.default.post(slackWebhookUrl, payload);
+                await sendMessageToSlack(message, slackWebhookUrl);
+                await sendMessageToSlack("======================\n======================", slackWebhookUrl)
             }
         }
 
@@ -100,6 +93,11 @@ async function run() {
     } catch (error: any) {
         core.setFailed(error.message);
     }
+}
+
+async function sendMessageToSlack(message: string, webhookUrl: string) {
+    const payload = JSON.stringify({ text: message });
+    return axios.default.post(webhookUrl, payload);
 }
 
 run();
