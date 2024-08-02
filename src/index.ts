@@ -54,20 +54,17 @@ async function run() {
                     for (const commit of commitsByAuthor[author]) {
                         message += `\`${commit.sha}\` - ${commit.message}\n`;
                     }
-                }
-                
-                if (author != teamInfo.authors.last)
-                {
-                    message += `**********************\n`;
+
+                    if (author != teamInfo.authors.last)
+                    {
+                        message += `**********************\n`;
+                    }
                 }
             }
             if (hasCommits) {
                 message += `\nTeam Lead: ${lead}`;
 
                 const payload = JSON.stringify({ text: message });
-
-                // Log the message to be sent to Slack
-                console.log("Message to be sent to Slack:", message);
 
                 // Send the message to Slack
                 await axios.default.post(slackWebhookUrl, payload);
@@ -96,9 +93,6 @@ async function run() {
 
         if (hasUnassignedCommits) {
             const unassignedPayload = JSON.stringify({ text: unassignedMessage });
-
-            // Log the message to be sent to Slack
-            console.log("Unassigned message to be sent to Slack:", unassignedMessage);
 
             // Send the message to Slack
             await axios.default.post(slackWebhookUrl, unassignedPayload);
