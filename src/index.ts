@@ -1,6 +1,10 @@
 import * as core from "@actions/core";
 import * as github from "@actions/github";
 import * as axios from "axios";
+import { Endpoints } from "@octokit/types";
+
+type CompareCommitsResponse = Endpoints["GET /repos/{owner}/{repo}/compare/{base}...{head}"]["response"]["data"];
+type Commit = CompareCommitsResponse["commits"][number];
 
 async function run() {
     try {
@@ -17,14 +21,7 @@ async function run() {
         const octokit = github.getOctokit(process.env.STALE_BRANCH_TOKEN);
         const { owner, repo } = github.context.repo;
 
-        const compareResponse = await octokit.rest.repos.compareCommits({
-            owner,
-            repo,
-            base: previousTag,
-            head: releaseBranch,
-        });
-
-        const commits = compareResponse.data.commits;
+        const commits = await getAllCommits(octokit, owner, repo, previousTag, releaseBranch);
 
         // Group commits by author
         const commitsByAuthor: { [key: string]: any[] } = {};
@@ -95,9 +92,46 @@ async function run() {
     }
 }
 
+async function getAllCommits(octokit: ReturnType<typeof github.getOctokit>, owner: string, repo: string, base: string, head: string): Promise<Commit[]> {
+    let commits: Commit[] = [];
+    let page = 1;
+    let response;
+
+    do {
+        response = await octokit.rest.repos.compareCommits({
+            owner,
+            repo,
+            base,
+            head,
+            per_page: 100,
+            page,
+        });
+
+        commits = commits.concat(response.data.commits);
+        page += 1;
+    } while (response.data.commits.length === 100);
+
+    return commits;
+}
+
+function splitMessage(message: string, maxLength: number): string[] {
+    const messages = [];
+    while (message.length > maxLength) {
+        let splitIndex = message.lastIndexOf('\n', maxLength);
+        if (splitIndex === -1) splitIndex = maxLength;
+        messages.push(message.substring(0, splitIndex));
+        message = message.substring(splitIndex).trim();
+    }
+    messages.push(message);
+    return messages;
+}
+
 async function sendMessageToSlack(message: string, webhookUrl: string) {
-    const payload = JSON.stringify({ text: message });
-    return axios.default.post(webhookUrl, payload);
+    const messages = splitMessage(message, 4000);
+    for (const msg of messages) {
+        const payload = JSON.stringify({ text: msg });
+        await axios.default.post(webhookUrl, payload);
+    }
 }
 
 run();
