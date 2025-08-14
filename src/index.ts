@@ -104,7 +104,7 @@ async function run() {
       }
 
       if (hasCommits) {
-        message += `\nTeam Lead: ${escapeSlackText(lead)}`;
+        message += `\nTeam Lead: ${lead}`;
         await sendMessageToSlack(message, slackWebhookUrl);
         await sendMessageToSlack("======================\n======================", slackWebhookUrl);
       }
