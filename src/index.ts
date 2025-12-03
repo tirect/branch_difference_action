@@ -7,8 +7,9 @@ type CompareCommitsResponse = Endpoints["GET /repos/{owner}/{repo}/compare/{base
 type Commit = CompareCommitsResponse["commits"][number];
 
 // Regexes: one for replacement (global) and one for detection (non-global)
-const JIRA_KEY_RE_G = /\b([A-Z][A-Z0-9]+-\d+)\b/g;
-const JIRA_KEY_RE = /\b([A-Z][A-Z0-9]+-\d+)\b/;
+// Support both DICE and ARCH ticket identifiers
+const JIRA_KEY_RE_G = /\b((?:DICE|ARCH)-[0-9]+)\b/g;
+const JIRA_KEY_RE = /\b((?:DICE|ARCH)-[0-9]+)\b/;
 
 const NO_JIRA_MARK = ":x:"; // Use "❌" if you prefer the Unicode emoji
 
@@ -21,7 +22,7 @@ function escapeSlackText(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-function linkifyJiraKeys(raw: string, jiraBaseUrl: string): string {
+function linkifyJiraKeys(raw: string, jiraBaseUrls: { dice?: string; arch?: string; default: string }): string {
   // Replace keys with <url|KEY>, while escaping everything else
   let out = "";
   let lastIndex = 0;
@@ -31,8 +32,15 @@ function linkifyJiraKeys(raw: string, jiraBaseUrl: string): string {
     const key = m[1];
     // escape non-match text
     out += escapeSlackText(raw.slice(lastIndex, idx));
+    // Determine which base URL to use based on ticket prefix
+    let baseUrl = jiraBaseUrls.default;
+    if (key.startsWith("DICE-") && jiraBaseUrls.dice) {
+      baseUrl = jiraBaseUrls.dice;
+    } else if (key.startsWith("ARCH-") && jiraBaseUrls.arch) {
+      baseUrl = jiraBaseUrls.arch;
+    }
     // insert Slack link
-    const url = `${jiraBaseUrl.replace(/\/+$/, "")}/browse/${key}`;
+    const url = `${baseUrl.replace(/\/+$/, "")}/browse/${key}`;
     out += `<${url}|${key}>`;
     lastIndex = idx + m[0].length;
   }
@@ -46,10 +54,20 @@ async function run() {
     const previousTag = core.getInput("previous-tag", { required: true });
     const slackWebhookUrl = core.getInput("slack-webhook-url", { required: true });
 
+    // Support separate base URLs for DICE and ARCH, with fallback to a single JIRA_BASE_URL
     const jiraBaseUrlEnv = (process.env.JIRA_BASE_URL || "").trim();
-    if (!jiraBaseUrlEnv) {
-      throw new Error("JIRA_BASE_URL environment variable is not set. Add it via repo/org Variables.");
+    const jiraBaseUrlDice = (process.env.JIRA_BASE_URL_DICE || "").trim();
+    const jiraBaseUrlArch = (process.env.JIRA_BASE_URL_ARCH || "").trim();
+    
+    if (!jiraBaseUrlEnv && !jiraBaseUrlDice && !jiraBaseUrlArch) {
+      throw new Error("At least one JIRA base URL must be set. Use JIRA_BASE_URL (for both), or JIRA_BASE_URL_DICE and/or JIRA_BASE_URL_ARCH.");
     }
+    
+    const jiraBaseUrls = {
+      dice: jiraBaseUrlDice || jiraBaseUrlEnv || undefined,
+      arch: jiraBaseUrlArch || jiraBaseUrlEnv || undefined,
+      default: jiraBaseUrlEnv || jiraBaseUrlDice || jiraBaseUrlArch,
+    };
 
     const teamMappingInput = process.env.TEAM_MAPPING || "";
     let teamMapping: Record<string, { team: string; authors: string[] }> = {};
@@ -96,7 +114,7 @@ async function run() {
           message += `Commits by \`${escapeSlackText(author)}\`:\n`;
           for (const commit of authorCommits) {
             const flagged = hasJiraKey(commit.message) ? "" : `${NO_JIRA_MARK} `;
-            const linkified = linkifyJiraKeys(commit.message, jiraBaseUrlEnv);
+            const linkified = linkifyJiraKeys(commit.message, jiraBaseUrls);
             message += `${flagged}\`${commit.sha}\` - ${linkified}\n`;
           }
           message += `**********************\n`;
@@ -127,7 +145,7 @@ async function run() {
         unassignedMessage += `Commits by \`${escapeSlackText(author)}\`:\n`;
         for (const commit of commitsByAuthor[author]) {
           const flagged = hasJiraKey(commit.message) ? "" : `${NO_JIRA_MARK} `;
-          const linkified = linkifyJiraKeys(commit.message, jiraBaseUrlEnv);
+          const linkified = linkifyJiraKeys(commit.message, jiraBaseUrls);
           unassignedMessage += `${flagged}\`${commit.sha}\` - ${linkified}\n`;
         }
       }
